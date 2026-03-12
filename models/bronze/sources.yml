@@ -1,5 +1,5 @@
 version: 2
- 
+ #source metadata
 sources:
  
 - name: bronze

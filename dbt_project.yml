@@ -41,7 +41,7 @@ models:
   SF_capstone:
     # Applies to all files under models/example/
     bronze:
-      +schema: bronze
+      +schema: bronze   #in which schema the table should be created
       +materialized: table 
     silver:
       +schema: silver
@@ -49,3 +49,4 @@ models:
     gold:
       +schema: gold
       +materialized: table 
+#project configuration

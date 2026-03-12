@@ -1,0 +1,14 @@
+version: 2
+ 
+models:
+  - name: silver_customer_data
+ 
+    columns:
+ 
+      - name: customer_id
+        description: Primary key
+        tests:
+          - unique
+          - not_null
+ 
+      

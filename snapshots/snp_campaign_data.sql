@@ -9,7 +9,7 @@ strategy='timestamp',
 updated_at='last_modified_date'
 )
 }}
- 
+--strategy and unique_key is used for updating the inc records 
 SELECT *
 FROM {{ ref('campaign_data') }}
  
