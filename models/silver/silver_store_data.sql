@@ -35,14 +35,29 @@ END AS valid_email,
  
 
  
-REGEXP_REPLACE(phone_number,'[^0-9]','') AS phone_number,
+-- REGEXP_REPLACE(phone_number,'[^0-9]','') AS phone_number,
+ 
+-- CASE
+--     WHEN LENGTH(REGEXP_REPLACE(phone_number,'[^0-9]','')) BETWEEN 10 AND 15
+--     THEN REGEXP_REPLACE(phone_number,'[^0-9]','')
+--     ELSE NULL
+-- END AS valid_phone,
+ 
+
+REGEXP_REPLACE(phone_number,'[^0-9]',''),
  
 CASE
-    WHEN LENGTH(REGEXP_REPLACE(phone_number,'[^0-9]','')) BETWEEN 10 AND 15
-    THEN REGEXP_REPLACE(phone_number,'[^0-9]','')
+    WHEN LENGTH(phone_number) = 11 AND LEFT(phone_number,1) = '1'
+    THEN SUBSTRING(phone_number,2)
+ 
+    WHEN LENGTH(phone_number) = 10 AND LEFT(phone_number,1) = '1'
+    THEN NULL
+ 
+    WHEN LENGTH(phone_number) = 10
+    THEN phone_number
+ 
     ELSE NULL
 END AS valid_phone,
- 
  
 
 COALESCE(TRY_TO_NUMBER(employee_count),0) AS employee_count,
