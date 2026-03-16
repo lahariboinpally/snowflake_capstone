@@ -1,12 +1,10 @@
-WITH source_data AS (
- 
+WITH srcdata AS (
 SELECT *
 FROM {{ ref('snp_customer_data') }}
 WHERE dbt_valid_to IS NULL
- 
 ),
  
-cleaned_birthdate AS (
+clean AS (
  
 SELECT
  
@@ -40,7 +38,7 @@ CASE
     ELSE NULL
 END AS valid_phone,
  
-/* BIRTHDATE FORMAT STANDARDIZATION */
+--BIRTHDATE
  
 COALESCE(
     TRY_TO_DATE(birth_date,'DD-MM-YYYY'),
@@ -76,16 +74,16 @@ dbt_valid_from,
 dbt_valid_to,
 dbt_updated_at
  
-FROM source_data
+FROM srcdata
  
 ),
  
-final_cleaned AS (
+final_clean AS (
  
 SELECT
 *,
  
-/* AGE CALCULATION USING CLEANED BIRTHDATE */
+--AGE CAL
  
 CASE
     WHEN birth_date IS NOT NULL
@@ -93,7 +91,7 @@ CASE
     ELSE NULL
 END AS customer_age,
  
-/* CUSTOMER SEGMENT */
+--CUSTOMER SEGMENT
  
 CASE
 WHEN birth_date IS NULL
@@ -112,9 +110,9 @@ ELSE 'Unknown'
  
 END AS customer_segment
  
-FROM cleaned_birthdate
+FROM clean
  
 )
  
 SELECT *
-FROM final_cleaned
+FROM final_clean

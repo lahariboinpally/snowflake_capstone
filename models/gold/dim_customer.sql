@@ -1,41 +1,42 @@
 SELECT
  
-/* Surrogate Key */
-ROW_NUMBER() OVER (ORDER BY customer_id, dbt_valid_from) AS customerkey,
+--Surrogate Key (pk)
+{{ dbt_utils.generate_surrogate_key(['customer_id']) }} AS customerkey,
  
-/* Business Key */
+--Business Key
 customer_id,
  
-/* Full Name */
+--Full Name
 first_name || ' ' || last_name AS full_name,
  
-/* Contact */
+--Email
 valid_email AS email,
+
+--Phone
 valid_phone AS phone,
  
-/* Address */
+--Address Details
 city,
 state,
 country,
  
-/* Demographics */
- 
+--Demographic Information
 birth_date,
 customer_age,
  
-/* Segment */
+--Segment
 customer_segment,
  
-/* Registration */
+--Registration Date
 registration_date,
  
-/* SCD Type 2 tracking */
+--Type 2 SCD tracking
 dbt_valid_from AS start_date,
 dbt_valid_to AS end_date,
  
 CASE
-WHEN dbt_valid_to IS NULL THEN TRUE
-ELSE FALSE
+WHEN dbt_valid_to IS NULL THEN TRUE   --if null latest record
+ELSE FALSE  --if not historical record
 END AS is_current
  
 FROM {{ ref('silver_customer_data') }}

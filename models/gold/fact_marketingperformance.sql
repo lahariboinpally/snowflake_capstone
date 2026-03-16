@@ -60,15 +60,26 @@ cs.datekey
 repeat_purchase AS (
  
 SELECT
- 
 campaignkey,
 datekey,
- 
 COUNT(DISTINCT customerkey) AS repeat_customers
  
-FROM campaign_sales
+FROM (
+    SELECT
+        f.campaignkey,
+        f.datekey,
+        f.customerkey
+    FROM {{ ref('fact_sales') }} f
+    GROUP BY
+        f.campaignkey,
+        f.datekey,
+        f.customerkey
+    HAVING COUNT(*) > 1
+) r
  
-GROUP BY campaignkey, datekey
+GROUP BY
+campaignkey,
+datekey
  
 ),
  
@@ -77,7 +88,6 @@ final_marketing AS (
 SELECT
  
 cs.campaignkey,
-cs.customerkey,
 cs.datekey,
  
 SUM(cs.total_sales_influenced) AS total_sales_influenced,
@@ -113,7 +123,6 @@ ON cs.campaignkey = c.campaignkey
  
 GROUP BY
 cs.campaignkey,
-cs.customerkey,
 cs.datekey,
 nc.new_customers_acquired,
 rp.repeat_customers,

@@ -16,13 +16,13 @@ sales AS (
  
 SELECT
  
-/* Surrogate Key */
+--Surrogate Key
 ROW_NUMBER() OVER (ORDER BY oi.order_id) AS saleskey,
  
-/* Business Key */
+--Business Key
 oi.order_id,
  
-/* Dimension Keys */
+--Dimension Keys
  
 c.customerkey,
 p.productkey,
@@ -31,7 +31,7 @@ d.datekey,
 e.employeekey,
 mc.campaignkey,
  
-/* Measures */
+--Measures
  
 oi.quantity AS quantity_sold,
  
@@ -45,7 +45,7 @@ oi.discount_amount,
  
 o.shipping_cost,
  
-/* Profit */
+--Profit
  
 (
 oi.item_total_amount
@@ -54,18 +54,18 @@ oi.item_total_amount
 - o.shipping_cost
 ) AS profit_amount,
  
-/* Region */
+--Region
  
 s.region,
  
-/* Sales Channel */
+--Sales Channel
  
 CASE
 WHEN LOWER(o.order_source) LIKE '%online%' THEN 'Online'
 ELSE 'In-Store'
 END AS sales_channel,
  
-/* Customer Segment */
+--Customer Segment
  
 c.customer_segment AS customer_segment_impact
  
