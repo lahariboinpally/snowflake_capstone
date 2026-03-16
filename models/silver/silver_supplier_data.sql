@@ -1,10 +1,10 @@
-WITH source_data AS (
+WITH srcdata AS (
     SELECT *
     FROM {{ ref('snp_supplier_data') }}
     WHERE dbt_valid_to IS NULL
 ),
 
-cleaned_birthdate AS (
+clean_birthdate AS (
     SELECT
         TRIM(supplier_id) AS supplier_id,
         INITCAP(TRIM(supplier_name)) AS supplier_name,
@@ -68,12 +68,12 @@ cleaned_birthdate AS (
         dbt_updated_at,
         dbt_valid_from,
         dbt_valid_to
-    FROM source_data
+    FROM srcdata
 ),
 
 final_cleaned AS (
     SELECT *
-    FROM cleaned_birthdate
+    FROM clean_birthdate
 )
 
 SELECT *

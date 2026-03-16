@@ -1,11 +1,14 @@
 SELECT
  
  
-ROW_NUMBER() OVER (ORDER BY store_id, dbt_valid_from) AS StoreKey,
+
+{{ dbt_utils.generate_surrogate_key(['store_id','dbt_valid_from']) }} AS Storekey,
  
+--store details
 store_id,
 store_name,
  
+--Address Details
 city,
 state,
 country,

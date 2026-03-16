@@ -1,13 +1,15 @@
 SELECT
  
-/* Surrogate Key */
-ROW_NUMBER() OVER (ORDER BY campaign_id) AS campaignkey,
+--Surrogate Key
+{{ dbt_utils.generate_surrogate_key(['campaign_id']) }} AS campaignkey,
  
-/* Business Key */
+--Business Key
 campaign_id AS campaignid,
  
-/* Dimension Attributes */
+--Dimension Attributes
 audience_segment AS target_audience_segment,
+campaign_type AS campaign_type,
+campaign_name AS campaign_name,
  
 budget,
  

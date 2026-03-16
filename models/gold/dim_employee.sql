@@ -1,10 +1,11 @@
 SELECT
-    ROW_NUMBER() OVER (ORDER BY employee_id, dbt_valid_from) AS EmployeeKey,
+    {{ dbt_utils.generate_surrogate_key(['employee_id','dbt_valid_from']) }} AS EmployeeKey,
     employee_id AS EmployeeID,
     first_name || ' ' || last_name AS Full_Name,
     standardized_role AS Role,
     tenure_years AS Tenure,
     valid_email AS EmailID,
+    hire_date AS hire_date,
     valid_phone AS PhoneNumber,
     work_location AS Work_Location,
     sales_target AS Sales_Target,

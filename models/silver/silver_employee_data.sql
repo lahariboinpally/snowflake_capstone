@@ -1,10 +1,10 @@
-WITH source_data AS (
+WITH srcdata AS (
     SELECT *
     FROM {{ ref('snp_employee_data') }}
     WHERE dbt_valid_to IS NULL
 ),
  
-clean_employee AS (
+clean_emp AS (
     SELECT
         TRIM(employee_id) AS employee_id,
  
@@ -71,7 +71,7 @@ clean_employee AS (
             '^1555',''
         ) AS valid_phone
  
-    FROM source_data
+    FROM srcdata
 ),
  
 employee_sales AS (
@@ -93,7 +93,7 @@ employee_final AS (
             THEN (s.total_sales_amount / e.sales_target) * 100
             ELSE NULL
         END AS target_achievement_percentage
-    FROM clean_employee e
+    FROM clean_emp e
     LEFT JOIN employee_sales s
         ON e.employee_id = s.employee_id
 )
