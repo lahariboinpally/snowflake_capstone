@@ -1,6 +1,7 @@
 SELECT
  
 --Surrogate Key
+--creates hashed key where internally dbt does MD5(campaign_id)
 {{ dbt_utils.generate_surrogate_key(['campaign_id']) }} AS campaignkey,
  
 --Business Key
