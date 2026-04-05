@@ -4,16 +4,19 @@ FROM {{ ref('orders_data') }}
 ),
 clean AS (
 SELECT
-TRIM(order_id) AS order_id,
-TRIM(product_id) AS product_id,
-TRY_TO_NUMBER(quantity) AS quantity,
-TRY_TO_NUMBER(unit_price) AS unit_price,
-TRY_TO_NUMBER(cost_price) AS cost_price,
-TRY_TO_NUMBER(item_discount) AS discount_amount,
-quantity * unit_price AS item_total_amount,
-quantity * cost_price AS item_cost
+    --IDs
+    {{trim_clean('order_id')}} as order_id,
+    {{trim_clean('product_id')}} as product_id,
+    --numeric cleaning
+    {{numeric_clean('quantity')}} as quantity,
+    {{numeric_clean('unit_price')}} as unit_price,
+    {{numeric_clean('cost_price')}} as cost_price,
+    {{numeric_clean('item_discount')}} as discount_amount
+,
+    --calcualtions
+    quantity*unit_price as item_total_amount,
+    quantity*cost_price as item_cost
 FROM srcdata
 )
- 
 SELECT *
 FROM clean

@@ -3,78 +3,50 @@ WITH srcdata AS (
     FROM {{ ref('snp_supplier_data') }}
     WHERE dbt_valid_to IS NULL
 ),
-
-clean_birthdate AS (
+clean_base AS (
     SELECT
-        TRIM(supplier_id) AS supplier_id,
-        INITCAP(TRIM(supplier_name)) AS supplier_name,
-        UPPER(TRIM(supplier_type)) AS supplier_type,
-        TRIM(tax_id) AS tax_id,
-        LOWER(TRIM(website)) AS website,
-        TRY_TO_NUMBER(year_established) AS year_established,
-        UPPER(TRIM(credit_rating)) AS credit_rating,
-        TRY_TO_BOOLEAN(is_active) AS is_active,
-        TRY_TO_DATE(last_modified_date) AS last_modified_date,
-        TRY_TO_DATE(last_order_date) AS last_order_date,
-        TRY_TO_NUMBER(lead_time_days) AS lead_time_days,
-        COALESCE(TRY_TO_NUMBER(minimum_order_quantity),0) AS minimum_order_quantity,
-        UPPER(TRIM(payment_terms)) AS payment_terms,
-        INITCAP(TRIM(preferred_carrier)) AS preferred_carrier,
-        LOWER(TRIM(categories_supplied)) AS categories_supplied,
-        INITCAP(TRIM(address)) AS address,
-        INITCAP(TRIM(contact_person)) AS contact_person,
-        LOWER(TRIM(contact_email)) AS contact_email,
-
-        CASE
-            WHEN LOWER(TRIM(contact_email)) 
-                 RLIKE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
-            THEN LOWER(TRIM(contact_email))
-            ELSE NULL
-        END AS valid_contact_email,
-
-        REGEXP_REPLACE(contact_phone,'[^0-9]','') AS phone_number,
-
-        CASE
-            -- 11-digit number starting with 1 → strip leading 1
-            WHEN LENGTH(REGEXP_REPLACE(contact_phone,'[^0-9]','')) = 11 
-                 AND LEFT(REGEXP_REPLACE(contact_phone,'[^0-9]',''),1) = '1'
-            THEN SUBSTRING(REGEXP_REPLACE(contact_phone,'[^0-9]',''),2)
-
-            -- 10-digit number starting with 1 → invalid
-            WHEN LENGTH(REGEXP_REPLACE(contact_phone,'[^0-9]','')) = 10 
-                 AND LEFT(REGEXP_REPLACE(contact_phone,'[^0-9]',''),1) = '1'
-            THEN NULL
-
-            -- 10-digit number → keep as-is
-            WHEN LENGTH(REGEXP_REPLACE(contact_phone,'[^0-9]','')) = 10
-            THEN REGEXP_REPLACE(contact_phone,'[^0-9]','')
-
-            ELSE NULL
-        END AS valid_phone,
-
-        TRIM(contract_id) AS contract_id,
-        TRY_TO_DATE(contract_start_date) AS contract_start_date,
-        TRY_TO_DATE(contract_end_date) AS contract_end_date,
-        TRY_TO_BOOLEAN(exclusivity) AS exclusivity,
-        TRY_TO_BOOLEAN(renewal_option) AS renewal_option,
-        TRY_TO_NUMBER(average_delay_days) AS average_delay_days,
-        TRY_TO_NUMBER(defect_rate) AS defect_rate,
-        TRY_TO_NUMBER(on_time_delivery_rate) AS on_time_delivery_rate,
-        INITCAP(TRIM(quality_rating)) AS quality_rating,
-        TRY_TO_NUMBER(response_time_hours) AS response_time_hours,
-        TRY_TO_NUMBER(returns_percentage) AS returns_percentage,
-
+        {{ trim_clean('supplier_id') }} AS supplier_id,
+        {{ text_clean('supplier_name','initcap') }} AS supplier_name,
+        {{ text_clean('supplier_type','upper') }} AS supplier_type,
+        {{ trim_clean('tax_id') }} AS tax_id,
+        {{ text_clean('website','lower') }} AS website,
+        {{ number('year_established') }} AS year_established,
+        {{ text_clean('credit_rating','upper') }} AS credit_rating,
+        COALESCE(TRY_TO_BOOLEAN(is_active), FALSE) AS is_active,
+        {{ datw('last_modified_date') }} AS last_modified_date,
+        {{ datw('last_order_date') }} AS last_order_date,
+        {{ number('lead_time_days') }} AS lead_time_days,
+        {{ number('minimum_order_quantity',0) }} AS minimum_order_quantity,
+        {{ text_clean('payment_terms','upper') }} AS payment_terms,
+        {{ text_clean('preferred_carrier','initcap') }} AS preferred_carrier,
+        {{ email_clean('contact_email') }} AS contact_email,
+        {{ email_validate('contact_email') }} AS valid_contact_email,
+        {{ phone_clean('contact_phone') }} AS phone_cleaned,
+        {{ trim_clean('contract_id') }} AS contract_id,
+        {{ datw('contract_start_date') }} AS contract_start_date,
+        {{ datw('contract_end_date') }} AS contract_end_date,
+        COALESCE(TRY_TO_BOOLEAN(exclusivity), FALSE) AS exclusivity,
+        COALESCE(TRY_TO_BOOLEAN(renewal_option), FALSE) AS renewal_option,
+        {{ number('average_delay_days') }} AS average_delay_days,
+        {{ number('defect_rate') }} AS defect_rate,
+        {{ number('on_time_delivery_rate') }} AS on_time_delivery_rate,
+        {{ text_clean('quality_rating','initcap') }} AS quality_rating,
+        {{ number('response_time_hours') }} AS response_time_hours,
+        {{ number('returns_percentage') }} AS returns_percentage,
+        {{ text_clean('categories_supplied','lower') }} AS categories_supplied,
+        {{ text_clean('address','initcap') }} AS address,
+        {{ text_clean('contact_person','initcap') }} AS contact_person,
         dbt_scd_id,
         dbt_updated_at,
         dbt_valid_from,
         dbt_valid_to
     FROM srcdata
 ),
-
 final_cleaned AS (
-    SELECT *
-    FROM clean_birthdate
+    SELECT
+        *,
+        {{ phone_validate('phone_cleaned') }} AS valid_phone
+    FROM clean_base
 )
-
 SELECT *
 FROM final_cleaned
