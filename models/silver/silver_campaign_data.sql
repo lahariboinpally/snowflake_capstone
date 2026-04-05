@@ -1,95 +1,64 @@
 WITH srcdata AS (
- 
     SELECT *
     FROM {{ ref('snp_campaign_data') }}
     WHERE dbt_valid_to IS NULL
- 
 ),
 clean AS (
- 
     SELECT
-    TRIM(campaign_id) AS campaign_id,
-    
---NAME
-    
-    INITCAP(TRIM(campaign_name)) AS campaign_name,
-    UPPER(TRIM(campaign_type)) AS campaign_type,
-    UPPER(TRIM(channel)) AS channel,
-    INITCAP(TRIM(description)) AS description,
---DATE
-    
-    TRY_TO_DATE(start_date) AS start_date,
-    TRY_TO_DATE(end_date) AS end_date,
-    TRY_TO_DATE(last_modified_date) AS last_modified_date,
---CAMPAIGN DURATION
-    CASE
-    WHEN TRY_TO_DATE(start_date) IS NOT NULL
-    AND TRY_TO_DATE(end_date) IS NOT NULL
-    THEN DATEDIFF(day, TRY_TO_DATE(start_date), TRY_TO_DATE(end_date))
-    ELSE NULL
-    END AS campaign_duration_days,
-    
-    --TARGET AUDIENCE
-    
-    INITCAP(TRIM(target_audience)) AS target_audience,
-    
-    CASE
-    WHEN LOWER(target_audience) LIKE '%young%' THEN 'Young Audience'
-    WHEN LOWER(target_audience) LIKE '%professional%' THEN 'Working Professionals'
-    WHEN LOWER(target_audience) LIKE '%senior%' THEN 'Senior Audience'
-    ELSE 'General'
-    END AS audience_segment,
-    --CURRENCY
-
-    TRY_TO_NUMBER(REGEXP_REPLACE(budget,'[^0-9.]','')) AS budget,
-    TRY_TO_NUMBER(REGEXP_REPLACE(total_cost,'[^0-9.]','')) AS total_cost,
-    TRY_TO_NUMBER(REGEXP_REPLACE(total_revenue,'[^0-9.]','')) AS total_revenue,
-    
-
-    --EXPECTED ROI
-    CASE
-    WHEN TRY_TO_NUMBER(REGEXP_REPLACE(total_cost,'[^0-9.]','')) > 0
-    THEN
-    (
-    TRY_TO_NUMBER(REGEXP_REPLACE(total_revenue,'[^0-9.]','')) -
-    TRY_TO_NUMBER(REGEXP_REPLACE(total_cost,'[^0-9.]',''))
-    )
-    / NULLIF(TRY_TO_NUMBER(REGEXP_REPLACE(total_cost,'[^0-9.]','')),0)
-    
-    ELSE NULL
-    END AS expected_roi,
-    --REPORTED ROI
-
-    
-    TRY_TO_NUMBER(roi_calculation) AS roi_calculation,
-    --ROI VALIDATION
-    CASE
-    
-    WHEN TRY_TO_NUMBER(roi_calculation) IS NULL
-    THEN 'Missing ROI'
-    
-    WHEN ABS(
-    TRY_TO_NUMBER(roi_calculation) -
-    (
-    (
-    TRY_TO_NUMBER(REGEXP_REPLACE(total_revenue,'[^0-9.]','')) -
-    TRY_TO_NUMBER(REGEXP_REPLACE(total_cost,'[^0-9.]',''))
-    )
-    / NULLIF(TRY_TO_NUMBER(REGEXP_REPLACE(total_cost,'[^0-9.]','')),0)
-    )
-    ) < 0.01
-    
-    THEN 'Valid'
-    
-    ELSE 'Mismatch'
-    
-    END AS roi_validation_status,
-    
-    --snapshot metadata
+    --primary key
+    {{trim_clean('campaign_id')}} as campaign_id,
+    --name 
+    {{text_clean('campaign_name','initcap')}} as campaign_name,
+    {{text_clean('campaign_type','upper')}} as campaign_type,
+    {{text_clean('channel','upper')}} as channel,
+    {{text_clean('description','initcap')}} as description,
+    --date
+    {{datw('start_date')}} as start_date,
+    {{datw('end_date')}} as end_date,
+    {{datw('last_modified_date')}} as last_modified_date,
+    --campaign duration
+    {{cal_duration(
+        datw('start_date'),
+        datw('end_date')
+    )}} as campaign_duration_days,
+    --target audience
+    {{text_clean('target_audience','initcap')}} as target_audience,
+    case 
+        when lower(target_audience) like '%young%' then 'Young Audience'
+        when lower(target_audience) like '%professional%' then 'Working Professionals'
+        when lower(target_audience) like '%senior%' then 'Senior Audience'
+        else 'General'
+    end as audience_segment,
+    --currency 
+    {{numeric_clean('budget')}} as budget,
+    {{numeric_clean('total_cost')}} as total_cost,
+    {{numeric_clean('total_revenue')}} as total_revenue,
+    --expected roi 
+    {{cal_roi(
+        numeric_clean('total_revenue'),
+        numeric_clean('total_cost')
+    )}} as expected_roi,
+    --reported roi
+    {{number('roi_calculation',0)}} as roi_calculation,
+    --roi validation 
+    case 
+        when{{number('roi_calculation',0)}} is null 
+            then 'Missing ROI'
+        when ABS(
+            {{number('roi_calculation',0)}}-
+            {{cal_roi(
+                numeric_clean('total_revenue'),
+                numeric_clean('total_cost')
+            )}}
+        )<0.01
+            then 'Valid'
+        else 'Mismatch'
+    end as roi_validation_status,
+    --snapshot meta
     dbt_valid_from,
     dbt_valid_to,
     dbt_updated_at
-    FROM srcdata
+from srcdata
 )
 SELECT *
 FROM clean

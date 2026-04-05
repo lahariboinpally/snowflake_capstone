@@ -5,75 +5,46 @@ WITH srcdata AS (
 ),
 clean_product AS (
     SELECT
-    --PRIMARY KEY
-    TRIM(product_id) AS product_id,
- 
-    --PRODUCT NAME
-    INITCAP(TRIM(product_name)) AS product_name,
-    INITCAP(TRIM(brand)) AS brand,
- 
-    --CATEGORY
-    INITCAP(TRIM(category)) AS category,
-    INITCAP(TRIM(subcategory)) AS subcategory,
-    INITCAP(TRIM(product_line)) AS product_line,
- 
-    --SUPPLIER
-    TRIM(supplier_id) AS supplier_id,
- 
-    --ATTRIBUTES
-    INITCAP(TRIM(color)) AS color,
-    UPPER(TRIM(size)) AS size,
-    TRIM(dimensions) AS dimensions,
-    TRIM(weight) AS weight,
- 
-    --DESCRIPTION
-    TRIM(short_description) AS short_description,
-    TRIM(technical_specs) AS technical_specs,
- 
-    CONCAT(
-        INITCAP(TRIM(product_name)),
-        ' - ',
-        TRIM(short_description),
-        ' - ',
-        TRIM(technical_specs)
-    ) AS product_full_description,
- 
-    --NUMERIC FIELDS
-    COALESCE(cost_price::NUMBER,0) AS cost_price,
-    COALESCE(unit_price::NUMBER,0) AS unit_price,
-    COALESCE(stock_quantity::NUMBER,0) AS stock_quantity,
-    COALESCE(reorder_level::NUMBER,0) AS reorder_level,
- 
-    --BOOLEAN
-    TRY_TO_BOOLEAN(is_featured) AS is_featured,
- 
-    --DATE STANDARDIZATION
-    launch_date::DATE AS launch_date,
-    last_modified_date AS last_modified_date,
- 
-    --OTHER
-    TRIM(warranty_period) AS warranty_period,
- 
-    --SNAPSHOT META
-    dbt_valid_from,
-    dbt_valid_to,
-    dbt_updated_at
+        -- PRIMARY KEY
+        {{ text_clean('brand','initcap') }} AS brand,
+        {{ text_clean('category','initcap') }} AS category,
+        {{ text_clean('subcategory','initcap') }} AS subcategory,
+        {{ text_clean('product_line','initcap') }} AS product_line,
+        {{ trim_clean('supplier_id') }} AS supplier_id,
+        {{ trim_clean('product_id') }} AS product_id,
+        {{ text_clean('product_name','initcap') }} AS product_name,
+        {{ text_clean('color','initcap') }} AS color,
+        {{ text_clean('size','upper') }} AS size,
+        {{ trim_clean('dimensions') }} AS dimensions,
+        {{ numeric_clean('weight') }} AS weight,
+        {{ trim_clean('short_description') }} AS short_description,
+        {{ trim_clean('technical_specs') }} AS technical_specs,
+        CONCAT(
+            {{ text_clean('product_name','initcap') }},
+            ' - ',
+            {{ trim_clean('short_description') }},
+            ' - ',
+            {{ trim_clean('technical_specs') }}
+        ) AS product_full_description,
+        {{ number('cost_price',0) }} AS cost_price,
+        {{ number('unit_price',0) }} AS unit_price,
+        {{ number('stock_quantity',0) }} AS stock_quantity,
+        {{ number('reorder_level',0) }} AS reorder_level,
+        {{ datw('launch_date') }} AS launch_date,
+        {{ timestamp('last_modified_date') }} AS last_modified_date,
+        {{ trim_clean('warranty_period') }} AS warranty_period,
+        COALESCE(TRY_TO_BOOLEAN(is_featured), FALSE) AS is_featured,
+        dbt_valid_from,
+        dbt_valid_to,
+        dbt_updated_at
     FROM srcdata
 )
 SELECT
-*,
---PROFIT MARGIN
-CASE
-    WHEN unit_price > 0
-    THEN ((unit_price - cost_price) / unit_price) * 100
-    ELSE NULL
-END AS profit_margin_percentage,
- 
---LOW STOCK FLAG
-CASE
-    WHEN stock_quantity < reorder_level
-    THEN TRUE
-    ELSE FALSE
-END AS low_stock_flag
- 
+    *,
+    CASE
+        WHEN unit_price > 0
+        THEN ROUND({{ divide('(unit_price - cost_price)', 'unit_price') }} * 100, 2)
+        ELSE NULL
+    END AS profit_margin_percentage,
+    stock_quantity < reorder_level AS low_stock_flag
 FROM clean_product

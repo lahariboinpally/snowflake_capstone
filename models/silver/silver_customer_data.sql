@@ -3,116 +3,58 @@ SELECT *
 FROM {{ ref('snp_customer_data') }}
 WHERE dbt_valid_to IS NULL
 ),
- 
 clean AS (
- 
 SELECT
- 
-TRIM(customer_id) AS customer_id,
- 
-INITCAP(TRIM(first_name)) AS first_name,
-INITCAP(TRIM(last_name)) AS last_name,
- 
-INITCAP(TRIM(first_name)) || ' ' || INITCAP(TRIM(last_name)) AS full_name,
- 
-LOWER(TRIM(email)) AS email,
- 
-CASE
-    WHEN LOWER(TRIM(email)) RLIKE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
-    THEN LOWER(TRIM(email))
-    ELSE NULL
-END AS valid_email,
- 
-REGEXP_REPLACE(phone,'[^0-9]','') AS phone_number,
- 
-CASE
-    WHEN LENGTH(phone_number) = 11 AND LEFT(phone_number,1) = '1'
-    THEN SUBSTRING(phone_number,2)
- 
-    WHEN LENGTH(phone_number) = 10 AND LEFT(phone_number,1) = '1'
-    THEN NULL
- 
-    WHEN LENGTH(phone_number) = 10
-    THEN phone_number
- 
-    ELSE NULL
-END AS valid_phone,
- 
---BIRTHDATE
- 
-COALESCE(
-    TRY_TO_DATE(birth_date,'DD-MM-YYYY'),
-    TRY_TO_DATE(birth_date,'YYYY-MM-DD'),
-    TRY_TO_DATE(birth_date,'MM/DD/YYYY')
-) AS birth_date,
- 
-TRY_TO_DATE(registration_date) AS registration_date,
-TRY_TO_DATE(last_purchase_date) AS last_purchase_date,
-TRY_TO_DATE(last_modified_date) AS last_modified_date,
- 
-COALESCE(TRY_TO_NUMBER(total_purchases),0) AS total_purchases,
-COALESCE(TRY_TO_NUMBER(total_spend),0) AS total_spend,
- 
-UPPER(TRIM(income_bracket)) AS income_bracket,
-UPPER(TRIM(loyalty_tier)) AS loyalty_tier,
- 
-TRY_TO_BOOLEAN(marketing_opt_in) AS marketing_opt_in,
- 
-INITCAP(TRIM(occupation)) AS occupation,
- 
-INITCAP(TRIM(preferred_payment_method)) AS preferred_payment_method,
-UPPER(TRIM(preferred_communication)) AS preferred_communication,
- 
-INITCAP(TRIM(street)) AS street,
-INITCAP(TRIM(city)) AS city,
-UPPER(TRIM(state)) AS state,
-TRIM(zip_code) AS zip_code,
-UPPER(TRIM(country)) AS country,
-
+--primary key
+{{trim_clean('customer_id')}} as customer_id,
+--name
+{{text_clean('first_name','initcap')}} as first_name,
+{{text_clean('last_name','initcap')}} as last_name,
+{{text_clean('first_name','initcap')}} || ' ' || {{text_clean('last_name','initcap')}} as full_name,
+--email 
+{{email_clean('email')}} as email,
+{{email_validate('email')}} as valid_email,
+--phone 
+{{phone_clean('phone')}} as phone_number,
+{{phone_validate('phone')}} as valid_phone,
+--birthdate
+{{datw('birth_date')}} as birth_date,
+{{datw('registration_date')}} as registration_date,
+{{datw('last_purchase_date')}} as last_purchase_date,
+{{datw('last_modified_date')}} as last_modified_date,
+--numeric 
+{{number('total_purchases',0)}} as total_purchases,
+{{number('total_spend',0)}} as total_spend,
+--text standardization
+{{text_clean('income_bracket','upper')}} as income_bracket,
+{{text_clean('loyalty_tier','upper')}} as loyalty_tier,
+--boolean
+try_to_boolean(marketing_opt_in) as marketing_opt_in,
+--other text 
+{{text_clean('occupation','initcap')}} as occupation,
+{{text_clean('preferred_payment_method','initcap')}} as preferred_payment_method,
+{{text_clean('preferred_communication','upper')}} as preferred_communication,
+--address
+{{text_clean('street','initcap')}} as street,
+{{text_clean('city','initcap')}} as city,
+{{text_clean('state','upper')}} as state,
+{{trim_clean('zip_code')}} as zip_code,
+{{text_clean('country','upper')}} as country,
+--snapshot meta
 dbt_scd_id, 
 dbt_valid_from,
 dbt_valid_to,
 dbt_updated_at
- 
 FROM srcdata
- 
 ),
- 
 final_clean AS (
- 
-SELECT
-*,
- 
---AGE CAL
- 
-CASE
-    WHEN birth_date IS NOT NULL
-    THEN DATEDIFF(year, birth_date, CURRENT_DATE)
-    ELSE NULL
-END AS customer_age,
- 
---CUSTOMER SEGMENT
- 
-CASE
-WHEN birth_date IS NULL
-    THEN 'Unknown'
- 
-WHEN DATEDIFF(year, birth_date, CURRENT_DATE) BETWEEN 18 AND 35
-    THEN 'Young'
- 
-WHEN DATEDIFF(year, birth_date, CURRENT_DATE) BETWEEN 36 AND 55
-    THEN 'Middle-aged'
- 
-WHEN DATEDIFF(year, birth_date, CURRENT_DATE) > 55
-    THEN 'Senior'
- 
-ELSE 'Unknown'
- 
-END AS customer_segment
- 
-FROM clean
- 
-)
- 
+    SELECT
+        *,
+        --age
+        {{age_cal('birth_date')}} as customer_age,
+        --segment
+        {{customer_segment('customer_age')}} as customer_segment
+        FROM clean 
+    )
 SELECT *
 FROM final_clean
